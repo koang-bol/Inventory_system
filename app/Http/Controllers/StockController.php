@@ -5,74 +5,82 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\StockTransaction;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class StockController extends Controller
 {
-    public function index(Request $request)
+    // Display stock transaction history / movement logs
+    public function index()
     {
-        $query = $request->query('product_name');
+        $transactions = StockTransaction::with(['product', 'user'])
+            ->latest()
+            ->paginate(15);
 
-        $transactionsQuery = StockTransaction::select('stock_transactions.*')
-            ->join('products', 'stock_transactions.product_id', '=', 'products.id')
-            ->with('product');
+        return view('stock.index', compact('transactions'));
+    }
 
-        if ($query) {
-            $transactionsQuery->where('products.name', 'like', '%' . $query . '%');
+    // Show Stock In Form
+    public function showStockInForm()
+    {
+        $products = Product::orderBy('name')->get();
+        return view('stock.in', compact('products'));
+    }
+
+    // Process Stock In
+    public function processStockIn(Request $request)
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'quantity' => 'required|integer|min:1',
+            'notes' => 'nullable|string|max:255',
+        ]);
+
+        $product = Product::findOrFail($request->product_id);
+        $product->increment('quantity', $request->quantity);
+
+        StockTransaction::create([
+            'product_id' => $product->id,
+            'user_id' => Auth::id(),
+            'type' => 'IN',
+            'quantity' => $request->quantity,
+            'notes' => $request->notes,
+        ]);
+
+        return redirect()->route('dashboard')->with('success', "Added {$request->quantity} unit(s) to {$product->name}.");
+    }
+
+    // Show Stock Out Form
+    public function showStockOutForm()
+    {
+        $products = Product::where('quantity', '>', 0)->orderBy('name')->get();
+        return view('stock.out', compact('products'));
+    }
+
+    // Process Stock Out
+    public function processStockOut(Request $request)
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'quantity' => 'required|integer|min:1',
+            'notes' => 'nullable|string|max:255',
+        ]);
+
+        $product = Product::findOrFail($request->product_id);
+
+        if ($request->quantity > $product->quantity) {
+            return back()->withErrors(['quantity' => "Cannot remove {$request->quantity} units. Only {$product->quantity} in stock."])->withInput();
         }
 
-        $transactions = $transactionsQuery
-            ->orderBy('products.name')
-            ->orderByDesc('stock_transactions.created_at')
-            ->get();
-
-        return view('stock.index', compact('transactions', 'query'));
-    }
-
-    public function createIn(Product $product)
-    {
-        return view('stock.in', compact('product'));
-    }
-
-    public function storeIn(Request $request, Product $product)
-    {
-        $data = $request->validate([
-            'quantity' => ['required', 'integer', 'min:1'],
-            'notes' => ['nullable', 'string'],
-        ]);
-
-        $product->increment('quantity', $data['quantity']);
+        $product->decrement('quantity', $request->quantity);
 
         StockTransaction::create([
             'product_id' => $product->id,
-            'type' => 'in',
-            'quantity' => $data['quantity'],
-            'notes' => $data['notes'] ?? null,
+            'user_id' => Auth::id(),
+            'type' => 'OUT',
+            'quantity' => $request->quantity,
+            'notes' => $request->notes,
         ]);
 
-        return redirect()->route('products.index')->with('success', 'Stock updated successfully.');
-    }
-
-    public function createOut(Product $product)
-    {
-        return view('stock.out', compact('product'));
-    }
-
-    public function storeOut(Request $request, Product $product)
-    {
-        $data = $request->validate([
-            'quantity' => ['required', 'integer', 'min:1', 'max:' . $product->quantity],
-            'notes' => ['nullable', 'string'],
-        ]);
-
-        $product->decrement('quantity', $data['quantity']);
-
-        StockTransaction::create([
-            'product_id' => $product->id,
-            'type' => 'out',
-            'quantity' => $data['quantity'],
-            'notes' => $data['notes'] ?? null,
-        ]);
-
-        return redirect()->route('products.index')->with('success', 'Stock updated successfully.');
+        return redirect()->route('dashboard')->with('success', "Removed {$request->quantity} unit(s) from {$product->name}.");
     }
 }

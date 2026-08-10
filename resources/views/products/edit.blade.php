@@ -1,43 +1,67 @@
-@extends('layouts.app')
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Product - Inventory System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+</head>
+<body class="bg-light">
 
-@section('content')
-    <div class="toolbar" style="justify-content: space-between; margin-bottom: 20px;">
-        <div>
-            <h1 style="margin: 0; font-size: 1.75rem;">Edit Product</h1>
-            <p style="margin: 6px 0 0 0; color: #475569;">Update product details without changing stock quantity.</p>
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-pencil me-2"></i>Edit Product</h5>
+                    <a href="{{ url('/') }}" class="btn btn-sm btn-light"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+                </div>
+                <div class="card-body">
+                    <form action="{{ route('products.update', $product->id) }}" method="POST">
+                        @csrf
+                        @method('PUT')
+
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Product Name</label>
+                            <input type="text" name="name" id="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $product->name) }}" required>
+                            @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="sku" class="form-label">SKU / Code</label>
+                                <input type="text" name="sku" id="sku" class="form-control @error('sku') is-invalid @enderror" value="{{ old('sku', $product->sku) }}" required>
+                                @error('sku') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="price" class="form-label">Unit Price ($)</label>
+                                <input type="number" step="0.01" name="price" id="price" class="form-control @error('price') is-invalid @enderror" value="{{ old('price', $product->price) }}" required>
+                                @error('price') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="quantity" class="form-label">Quantity</label>
+                            <input type="number" name="quantity" id="quantity" class="form-control @error('quantity') is-invalid @enderror" value="{{ old('quantity', $product->quantity) }}" required>
+                            @error('quantity') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description (Optional)</label>
+                            <textarea name="description" id="description" class="form-control @error('description') is-invalid @enderror" rows="3">{{ old('description', $product->description) }}</textarea>
+                            @error('description') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i> Update Product</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-        <a href="{{ route('products.index') }}" class="button secondary">Back to products</a>
     </div>
+</div>
 
-    <div class="card" style="max-width: 600px;">
-        <form method="POST" action="{{ route('products.update', $product) }}">
-            @csrf
-            @method('PUT')
-
-            <div class="field">
-                <label for="name">Product name</label>
-                <input id="name" name="name" type="text" value="{{ old('name', $product->name) }}" required />
-            </div>
-
-            <div class="field">
-                <label for="description">Description</label>
-                <textarea id="description" name="description" rows="4">{{ old('description', $product->description) }}</textarea>
-            </div>
-
-            <div class="field">
-                <label for="price">Price</label>
-                <input id="price" name="price" type="number" step="0.01" min="0" value="{{ old('price', $product->price) }}" required />
-            </div>
-
-            <div class="field">
-                <label>Current quantity</label>
-                <input type="number" value="{{ $product->quantity }}" disabled />
-            </div>
-
-            <div class="form-actions">
-                <button type="submit" class="button">Update product</button>
-                <a href="{{ route('products.index') }}" class="button secondary">Cancel</a>
-            </div>
-        </form>
-    </div>
-@endsection
+</body>
+</html>
